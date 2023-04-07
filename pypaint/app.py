@@ -29,6 +29,12 @@ class MainWindow(QMainWindow):
         #negatif_action.setShortcut("")
         negatif_action.triggered.connect(self.inverser_image)
 
+        noir_et_blanc_action = QAction("Noir et Blanc", self)
+        noir_et_blanc_action.triggered.connect(self.noir_et_blanc_image)
+
+        sepia_action = QAction("Sépia", self)
+        sepia_action.triggered.connect(self.sepia_image)
+
         gris_action = QAction("Niveaux gris", self)
         #test_action.setShortcut("")
         gris_action.triggered.connect(self.gris_image)
@@ -61,6 +67,8 @@ class MainWindow(QMainWindow):
         traitement_menu = menu_bar.addMenu("Traitement")
         traitement_menu.addAction(negatif_action)
         traitement_menu.addAction(gris_action)
+        traitement_menu.addAction(noir_et_blanc_action)
+        traitement_menu.addAction(sepia_action)
        
         message_menu = menu_bar.addMenu("Message")
         message_menu.addAction(crypter_action)
@@ -68,10 +76,6 @@ class MainWindow(QMainWindow):
 
         debuggage_menu = menu_bar.addMenu("Débuggage")
         debuggage_menu.addAction(afficher_action)
-
-        # Création du bouton de traitement d'image
-        #traitement_bouton = QPushButton("Traitement d'image", self)
-        #traitement_bouton.clicked.connect(self.traiter_image)
 
         # Création du label pour l'affichage de l'image
         self.image_label = QLabel(self) #mettre une taille constante pour l affichage de l'image ou alors une var
@@ -104,8 +108,6 @@ class MainWindow(QMainWindow):
         self.epaisseurPinceau.setFocusPolicy(Qt.FocusPolicy(0))
         editToolBar.addWidget(self.epaisseurPinceau)
 
-        
-
         # Création du widget pour la fenêtre principale
         widget = QWidget()
         widget.setLayout(layout)
@@ -130,10 +132,6 @@ class MainWindow(QMainWindow):
             qim = QImage(data, image.size[0], image.size[1], QImage.Format.Format_RGBA8888)
             pix = QPixmap.fromImage(qim)
             return pix
-            # data = image.tostring('raw', 'RGBA')
-            # image = QImage(data, image.size[0], image.size[1], QImage.Format_ARGB32)
-            # pix = QPixmap.fromImage(image)
-            # return pix
         except Exception as e:
             print("Erreur lors de la transformation de l'image :", e)
 
@@ -152,17 +150,6 @@ class MainWindow(QMainWindow):
                 
                 if self.image.mode != "RGB":
                     self.image = self.image.convert('RGB')
-                '''
-                # Chargement de l'image BMP
-                image = Image.open(chemin_fichier)
-
-                # Affichage de l'image dans le label
-                pixmap = QPixmap.fromImage(ImageQt.ImageQt(image))
-                self.image_label.setPixmap(pixmap)
-
-                # Stockage de l'image dans la variable d'instance
-                self.image = image
-                '''
             except Exception as e:
                 print("Erreur lors du chargement de l'image :", e)
 
@@ -175,22 +162,33 @@ class MainWindow(QMainWindow):
                 # Enregistrement de l'image BMP
                 self.image.save(chemin_fichier)
 
-    def inverser_image(self): 
-        if self.image:
-            try:
-                # Image doit êre en RGB
-                if self.image.mode != "RGB":
-                    self.image = self.image.convert('RGB')
-                # Traitement de l'image BMP
-                # Exemple : inversion de l'image (négatif)
-                self.image = ImageOps.invert(self.image)
+    def inverser_image(self):
+        if not self.image:
+            return
+        matrice_pixels = self.image.load()
+        for y in range(self.image.height):
+            for x in range(self.image.width):
+                pixel = matrice_pixels[x, y]
+                matrice_pixels[x, y] = (255 - pixel[0], 255 - pixel[1], 255 - pixel[2])
+        pixmap = self.pilToPix(self.image)
+        self.image_label.setPixmap(pixmap.scaled(1280,720, aspectRatioMode= Qt.AspectRatioMode(1)))
 
-                # Affichage de l'image traitée dans le label
-                #pixmap = QPixmap.fromImage(ImageQt(self.image))
-                pixmap = self.pilToPix(self.image)
-                self.image_label.setPixmap(pixmap.scaled(1280,720, aspectRatioMode= Qt.AspectRatioMode(1)))
-            except Exception as e:
-                print("Erreur lors du traitement de l'image :", e)
+    def noir_et_blanc_image(self):
+        if not self.image:
+            return
+        matrice_pixels = self.image.load()
+        for y in range(self.image.height):
+            for x in range(self.image.width):
+                luminance = int(0.2126 * matrice_pixels[x, y][0] + 0.7152 * matrice_pixels[x, y][1] + 0.0722 * matrice_pixels[x, y][2])
+                matrice_pixels[x, y] = (luminance, luminance, luminance)
+        pixmap = self.pilToPix(self.image)
+        self.image_label.setPixmap(pixmap.scaled(1280,720, aspectRatioMode= Qt.AspectRatioMode(1)))
+
+
+    def sepia_image(self):
+        if not self.image:
+            return
+        #SOON
 
     def gris_image(self): #TODO mettre en niveaux de gris
         if self.image:
@@ -217,6 +215,9 @@ class MainWindow(QMainWindow):
             popup = Popup(self)
             if popup.exec():
                 texte_saisi = popup.text()
+                if len(texte_saisi) == 0:
+                    return
+                texte_saisi += "§"
                 binary_text = ''.join(format(ord(letter), '08b') for letter in texte_saisi)
             matrice_pixels = self.image.load()
             for y in range(self.image.height):
@@ -233,6 +234,8 @@ class MainWindow(QMainWindow):
                     ib += 3
 
     def decrypter_image(self):
+        if not self.image:
+            return
         #self.image -> instance de classe Image
         def to_bin(n):
             c = bin(n)[2:]
