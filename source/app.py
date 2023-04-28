@@ -12,7 +12,7 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         # Définition de la fenêtre principale
-        self.setWindowTitle("Pypaint")
+        self.setWindowTitle("PyPicture")
         self.setGeometry(100, 100, 800, 600)
         self.setWindowIcon(QIcon(r"templates\icon.webp"))
 
