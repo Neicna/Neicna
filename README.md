@@ -1,2 +1,2 @@
-# Pypaint
+# PyPicture
 Config files for my GitHub profile.
