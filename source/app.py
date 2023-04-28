@@ -43,11 +43,23 @@ class MainWindow(QMainWindow):
         #test_action.setShortcut("")
         gris_action.triggered.connect(self.gris_image)
 
-        crypter_action = QAction("Crypter", self)
-        crypter_action.triggered.connect(self.crypter_image)
+        rsa_action = QAction("Chiffrement RSA", self)
+        rsa_action.triggered.connect(self.crypter_image)
 
-        decrypter_action = QAction("Décrypter", self)
-        decrypter_action.triggered.connect(self.decrypter_image)
+        cesar_action = QAction("Code César", self)
+        cesar_action.triggered.connect(self.crypter_image)
+
+        cesarPlus_action = QAction("Code César +", self)
+        cesarPlus_action.triggered.connect(self.crypter_image)
+
+        dersa_action = QAction("Déchiffrer RSA", self)
+        dersa_action.triggered.connect(self.decrypter_image)
+
+        decesar_action = QAction("Déchiffrer César", self)
+        decesar_action.triggered.connect(self.decrypter_image)
+
+        decesarPlus_action = QAction("Déchiffrer César +", self)
+        decesarPlus_action.triggered.connect(self.decrypter_image)
 
         afficher_action = QAction("Afficher", self)
         afficher_action.triggered.connect(self.afficher_image)
@@ -74,8 +86,14 @@ class MainWindow(QMainWindow):
         traitement_menu.addAction(sepia_action)
        
         message_menu = menu_bar.addMenu("Message")
-        message_menu.addAction(crypter_action)
-        message_menu.addAction(decrypter_action)
+        crypter_menu = message_menu.addMenu("Crypter")
+        crypter_menu.addAction(rsa_action)
+        crypter_menu.addAction(cesar_action)
+        crypter_menu.addAction(cesarPlus_action)
+        decrypter_menu = message_menu.addMenu("Decrypter")
+        decrypter_menu.addAction(dersa_action)
+        decrypter_menu.addAction(decesar_action)
+        decrypter_menu.addAction(decesarPlus_action)
 
         debuggage_menu = menu_bar.addMenu("Débuggage")
         debuggage_menu.addAction(afficher_action)
@@ -217,7 +235,7 @@ class MainWindow(QMainWindow):
                     matrice_pixels[x, y] = (pixel[0] | binary(ib-1), pixel[1] | binary(ib), pixel[2] | binary(ib+1))
                     ib += 3
 
-    def decrypter_image(self):
+    def decrypter(self):
         if not self.image:
             return
         #self.image -> instance de classe Image
@@ -229,28 +247,22 @@ class MainWindow(QMainWindow):
             return c
         matrice_pixels = self.image.load()
         binary_string = ''
-        string = []
-        stoped = False
+        string = ""
         for y in range(self.image.height):
-            if stoped:
-                break
-            for x in range(self.image.width):
-                if stoped:
-                    break
+            for x in range(self.image.width): 
                 pixel = matrice_pixels[x, y]
                 for z in range(len(pixel)):
-                    if stoped:
-                        break
                     binary_string += to_bin(pixel[z])[-1]
                     if len(binary_string) == 8:
                         char = chr(int(binary_string, 2))
-                        print(char)
-                        if char == '%':
-                            stoped = True
-                            break
-                        string.append(char)
+                        binary_string = ""
+                        if char == '§':
+                            return string
+                        string += char
                         binary_string = ''
-        print(string)
+
+    def decrypter_image(self):
+        print(self.decrypter())
 
     def afficher_image(self):
         if self.image:
