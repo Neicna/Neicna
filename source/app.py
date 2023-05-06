@@ -7,6 +7,9 @@ from PyQt6.QtWidgets import QApplication, QLabel, QMainWindow, QFileDialog, QPus
 from PyQt6.QtGui import QPixmap, QAction, QImage, QIcon
 from PyQt6.QtCore import Qt
 
+import random
+import math
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -219,6 +222,9 @@ class MainWindow(QMainWindow):
                 texte_saisi = popup.text()
                 if len(texte_saisi) == 0:
                     return
+                popupclee = PopupClees(self)
+                if popupclee.exec():
+                    print("yes")
                 texte_saisi += "§"
                 binary_text = ''.join(format(ord(letter), '08b') for letter in texte_saisi)
             matrice_pixels = self.image.load()
@@ -235,6 +241,74 @@ class MainWindow(QMainWindow):
                     matrice_pixels[x, y] = (pixel[0] | binary(ib-1), pixel[1] | binary(ib), pixel[2] | binary(ib+1))
                     ib += 3
 
+    def generer_cle(self):
+        # générer deux nombres premiers aléatoires
+        p = random.randint(100, 1000)
+        while not self.est_premier(p):
+            p = random.randint(100, 1000)
+        q = random.randint(100, 1000)
+        while not self.est_premier(q):
+            q = random.randint(100, 1000)
+        
+        # calculer n et phi(n)
+        n = p * q
+        phi_n = (p - 1) * (q - 1)
+        
+        # trouver un entier e tel que 1 < e < phi(n) et e et phi(n) sont premiers entre eux
+        e = random.randint(2, phi_n - 1)
+        while not self.est_premier_entre_eux(e, phi_n):
+            e = random.randint(2, phi_n - 1)
+        
+        # calculer d tel que d*e ≡ 1 (mod phi(n))
+        d = self.trouver_d(e, phi_n)
+        
+        # retourner la clé publique (n, e) et la clé privée d
+        return (n, e), d
+
+
+    def est_premier(self, n):
+        if n <= 1:
+            return False
+        for i in range(2, int(math.sqrt(n)) + 1):
+            if n % i == 0:
+                return False
+        return True
+
+
+    def est_premier_entre_eux(self,a, b):
+        while b != 0:
+            a, b = b, a % b
+        return a == 1
+
+
+    def trouver_d(self, e, phi_n):
+        d = 0
+        for i in range(1, phi_n):
+            if (i * e) % phi_n == 1:
+                d = i
+                break
+        return d
+
+
+    def chiffrer(self, message, cle_publique):
+        n, e = cle_publique
+        # chiffrer chaque caractère en utilisant la clé publique
+        chiffres = [pow(ord(c), e, n) for c in message]
+        
+        # retourner les chiffres chiffrés
+        return chiffres
+
+
+    def dechiffrer(self, chiffres, cle_privee):
+        n, d = cle_privee
+        
+        # déchiffrer chaque chiffre en utilisant la clé privée
+        message = "".join([chr(pow(c, d, n)) for c in chiffres])
+        
+        # retourner le message déchiffré
+        return message
+
+
     def decrypter(self):
         if not self.image:
             return
@@ -245,6 +319,9 @@ class MainWindow(QMainWindow):
                 for i in range(len(c) % 8):
                     c = '0' + c
             return c
+        popupdemande = Popupdemande(self)
+        if popupdemande.exec():
+            print("yes")
         matrice_pixels = self.image.load()
         binary_string = ''
         string = ""
@@ -257,6 +334,9 @@ class MainWindow(QMainWindow):
                         char = chr(int(binary_string, 2))
                         binary_string = ""
                         if char == '§':
+                            popupaffiche = PopupAffiche(self)
+                            if popupaffiche.exec():
+                                print("yes")
                             return string
                         string += char
                         binary_string = ''
@@ -272,6 +352,57 @@ class MainWindow(QMainWindow):
                     pixel = matrice_pixels[x, y]
                     print(pixel, end=" ")
             print("---------------------------------------------------------")
+
+class PopupClees(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Clées RSA")
+
+        self.button_ok = QPushButton("OK", self)
+        self.button_ok.clicked.connect(self.accept)
+
+        # Création des labels pour les variables
+        label1 = QLabel(f"Clée publique : (273307, 82451)", self)
+        label2 = QLabel(f"Clée privée : (273307, 135131)", self)
+
+        # Ajout des labels à la fenêtre pop-up
+        layout = QVBoxLayout(self)
+        layout.addWidget(label1)
+        layout.addWidget(label2)
+        layout.addWidget(self.button_ok)
+
+class Popupdemande(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Rentrer clée privée")
+
+        # Création du champ de texte et du bouton "OK"
+        self.text_edit = QLineEdit(self)
+        self.text_edit2 = QLineEdit(self)
+        self.button_ok = QPushButton("OK", self)
+        self.button_ok.clicked.connect(self.accept)
+
+        # Ajout des widgets à la fenêtre pop-up
+        layout = QVBoxLayout(self)
+        layout.addWidget(self.text_edit)
+        layout.addWidget(self.text_edit2)
+        layout.addWidget(self.button_ok)
+
+class PopupAffiche(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Texte déchiffré")
+
+        self.button_ok = QPushButton("OK", self)
+        self.button_ok.clicked.connect(self.accept)
+
+        # Création des labels pour les variables
+        label = QLabel(f"Texte déchiffré: Test", self)
+
+        # Ajout des labels à la fenêtre pop-up
+        layout = QVBoxLayout(self)
+        layout.addWidget(label)
+        layout.addWidget(self.button_ok)
 
 class Popup(QDialog):
     def __init__(self, parent=None):
