@@ -56,13 +56,13 @@ class MainWindow(QMainWindow):
         cesarPlus_action.triggered.connect(self.crypter_image)
 
         dersa_action = QAction("Déchiffrer RSA", self)
-        dersa_action.triggered.connect(self.decrypter_image)
+        dersa_action.triggered.connect(self.decrypter)
 
         decesar_action = QAction("Déchiffrer César", self)
-        decesar_action.triggered.connect(self.decrypter_image)
+        decesar_action.triggered.connect(self.decrypter)
 
         decesarPlus_action = QAction("Déchiffrer César +", self)
-        decesarPlus_action.triggered.connect(self.decrypter_image)
+        decesarPlus_action.triggered.connect(self.decrypter)
 
         afficher_action = QAction("Afficher", self)
         afficher_action.triggered.connect(self.afficher_image)
@@ -222,11 +222,12 @@ class MainWindow(QMainWindow):
                 texte_saisi = popup.text()
                 if len(texte_saisi) == 0:
                     return
-                popupclee = PopupClees(self)
-                if popupclee.exec():
+                (n, e), d = self.generer_cle()
+                popupclee = PopupClees(self, [n, e, d])
+                if not popupclee.exec():
                     print("yes")
-                texte_saisi += "§"
-                binary_text = ''.join(format(ord(letter), '08b') for letter in texte_saisi)
+                texte_chiffre = str(self.chiffrer(texte_saisi, (n, e))) + "§"
+                binary_text = ''.join(format(ord(letter), '08b') for letter in texte_chiffre)
             matrice_pixels = self.image.load()
             for y in range(self.image.height):
                 for x in range(self.image.width):
@@ -290,7 +291,7 @@ class MainWindow(QMainWindow):
         return d
 
 
-    def chiffrer(self, message, cle_publique):
+    def chiffrer(self, message: str, cle_publique: tuple[int, int]):
         n, e = cle_publique
         # chiffrer chaque caractère en utilisant la clé publique
         chiffres = [pow(ord(c), e, n) for c in message]
@@ -299,7 +300,7 @@ class MainWindow(QMainWindow):
         return chiffres
 
 
-    def dechiffrer(self, chiffres, cle_privee):
+    def dechiffrer(self, chiffres: list[int], cle_privee: tuple[int, int]):
         n, d = cle_privee
         
         # déchiffrer chaque chiffre en utilisant la clé privée
@@ -312,16 +313,15 @@ class MainWindow(QMainWindow):
     def decrypter(self):
         if not self.image:
             return
-        #self.image -> instance de classe Image
         def to_bin(n):
             c = bin(n)[2:]
             if len(c) % 8 != 0:
                 for i in range(len(c) % 8):
                     c = '0' + c
             return c
-        popupdemande = Popupdemande(self)
+        popupdemande = PopupDemande(self)
         if popupdemande.exec():
-            print("yes")
+            pkey = popupdemande.text()
         matrice_pixels = self.image.load()
         binary_string = ''
         string = ""
@@ -331,18 +331,21 @@ class MainWindow(QMainWindow):
                 for z in range(len(pixel)):
                     binary_string += to_bin(pixel[z])[-1]
                     if len(binary_string) == 8:
+                        if binary_string != "00000000":
+                            print(binary_string)
                         char = chr(int(binary_string, 2))
-                        binary_string = ""
+                        if 0 != ord(char):
+                            print(char)
                         if char == '§':
-                            popupaffiche = PopupAffiche(self)
+                            chiffres = [ord(c) for c in string]
+                            string = self.dechiffrer(chiffres, (int(pkey[0]), int(pkey[1])))
+                            print(string)
+                            popupaffiche = PopupAffiche(string, self)
                             if popupaffiche.exec():
                                 print("yes")
                             return string
                         string += char
                         binary_string = ''
-
-    def decrypter_image(self):
-        print(self.decrypter())
 
     def afficher_image(self):
         if self.image:
@@ -354,16 +357,17 @@ class MainWindow(QMainWindow):
             print("---------------------------------------------------------")
 
 class PopupClees(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, keys = [0, 0, 0]): #n, e, d
         super().__init__(parent)
         self.setWindowTitle("Clées RSA")
+        self.keys = keys
 
         self.button_ok = QPushButton("OK", self)
         self.button_ok.clicked.connect(self.accept)
 
         # Création des labels pour les variables
-        label1 = QLabel(f"Clée publique : (273307, 82451)", self)
-        label2 = QLabel(f"Clée privée : (273307, 135131)", self)
+        label1 = QLabel(f"Clée publique : ("+ str(self.keys[0])+ ","+  str(self.keys[1])+ ")", self)
+        label2 = QLabel(f"Clée privée : ("+ str(self.keys[0])+ ","+  str(self.keys[2])+ ")", self)
 
         # Ajout des labels à la fenêtre pop-up
         layout = QVBoxLayout(self)
@@ -371,14 +375,14 @@ class PopupClees(QDialog):
         layout.addWidget(label2)
         layout.addWidget(self.button_ok)
 
-class Popupdemande(QDialog):
+class PopupDemande(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Rentrer clée privée")
 
         # Création du champ de texte et du bouton "OK"
-        self.text_edit = QLineEdit(self)
-        self.text_edit2 = QLineEdit(self)
+        self.text_edit = QLineEdit(self) #d
+        self.text_edit2 = QLineEdit(self) #e
         self.button_ok = QPushButton("OK", self)
         self.button_ok.clicked.connect(self.accept)
 
@@ -388,8 +392,12 @@ class Popupdemande(QDialog):
         layout.addWidget(self.text_edit2)
         layout.addWidget(self.button_ok)
 
+    def text(self):
+        # Renvoie le texte saisi dans le champ de texte
+        return (self.text_edit.text(), self.text_edit2.text())
+
 class PopupAffiche(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, message, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Texte déchiffré")
 
@@ -397,7 +405,7 @@ class PopupAffiche(QDialog):
         self.button_ok.clicked.connect(self.accept)
 
         # Création des labels pour les variables
-        label = QLabel(f"Texte déchiffré: Test", self)
+        label = QLabel(f"Texte déchiffré: {message}", self)
 
         # Ajout des labels à la fenêtre pop-up
         layout = QVBoxLayout(self)
